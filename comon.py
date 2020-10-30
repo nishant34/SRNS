@@ -1,0 +1,47 @@
+import os
+import numpy as np
+
+data_root = 'C:/Users/DELL/Desktop/Current_fields/SRN'
+root_dir = data_root
+image_sidelength = 224
+batch_size_per_side_length = 34
+max_steps_per_side_length = 64
+embedding_size = 32
+device = 'cuda'
+load_model = False
+save_path = os.path.join(data_root,'models')
+load_path = os.path.join(data_root,'models')
+max_iters = 25
+#intrinsics_file_path = os.path.join(data_root,'dataset/shepard_metzler_train/000000/intrinsics.txt')
+#intrinsics_file_path = data_root + '/' + 'dataset/shepard_metzler_train/000000/intrinsics.txt'
+intrinsics_file_path = 'C:/Users/DELL/Desktop/Current_fields/SRN/dataset/shepard_metzler_train/000000/intrinsics.txt'
+validat1 = False
+input_size  = 72
+output_size = 3
+hidden_state_size = 32
+pixel_output = 3
+initial_distance = 0
+num_instances = 25
+latent_dim = 32
+latent_size =32
+hidden_layer_dim = 256
+num_layers = 4
+results_path = data_root + '/' + 'results'
+log_path = results_path + 'log_files'
+tensorboard_dir = results_path + '/tensorboard_files'
+checkpoints_dir = results_path + '/check_points' 
+lr = 0.001
+start_epoch = 0
+end_epoch = 5
+train_batch_size = 4
+batch_size = 4
+n_epochs = 10
+SAVE_MODEL_EPOCH=5
+weight1 = 0.3
+weight2 =0.4
+weight3 =0.3
+feature_vector_size = 32
+num_layers =4
+target_length = 64
+lamb1 = 0.44
+lamb2 = 0.46
