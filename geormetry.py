@@ -1,7 +1,7 @@
 import numpy as  np
 import torch
 import cv2
-from common import *
+from comon import *
 #def get_intrinsic(file_name,image_length):
     
  #   text_file = open('file_name','r') 
@@ -75,13 +75,16 @@ def get_depths_from_world_coordinates(x,y,z,extrinsic_matrix):
 
     homogenous_points =  torch.cat((x,y,z,torch.ones(x).cuda()),dim=-1)
 
-    camera_coordinates = torch.inverse(extrinsic_matrix)*.bmm(homogenous_points)
+    #camera_coordinates = torch.inverse(extrinsic_matrix)*.bmm(homogenous_points)
 
     depth = camera_coordinates[:,:,2]
     depth = depth[:,:,None]
 
     return depth
 
+
+
+    
 
 
     
