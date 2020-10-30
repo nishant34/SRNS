@@ -1,14 +1,13 @@
 import numpy as  np
 import torch
 import cv2
-
-import torch.functional.nn as F
-
+import torch.nn.functional as F
+from comon import *
 from glob import glob
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def parse_intrinsics(file_path,trgt_sidelength=None):
+def parse_intrinsics(file_path,targt_sidelength=None):
     txt_file = open(file_path,'r')
     lines = txt_file.readline()
     f = float(lines.split()[0])
@@ -24,16 +23,16 @@ def parse_intrinsics(file_path,trgt_sidelength=None):
     h = float(line4.split()[0])
     w  = float(line4.split()[1])
     
-    if trgt_sidelienth is not None:
-        cx = cx/width*trgt_sidelength
-        cy  = cy/height*trgt_sidelength
-        f = trget_sidelength/height*f
+    if targt_sidelength is not None:
+        cx = cx/width*targt_sidelength
+        cy  = cy/height*targt_sidelength
+        f = target_sidelength/height*f
     intrinsic_matrix = np.array([[f, 0., cx, 0.],
                                [0., f, cy, 0],
                                [0., 0, 1, 0],
                                [0, 0, 0, 1]])
 
-    return intrinsic_matrix,grid_barycenter,scale
+    return intrinsic_matrix,bary_center,scale
 
 def straight_to_2D_image(tensor):
     batches,num_samples,channels = tensor.shape()
@@ -79,6 +78,47 @@ def get_extrinsic_matrix(file_name):
 
 
     return torch.from_numpy(a)
+
+#def convert_extrinsic_to_tensor(extrinsics):
+
+def get_world_coordinates(R,K,t,x,d):
+    #y1  =[]
+    #y = []
+    y = torch.zeros(batch_size,x.shape[1],x.shape[2],3)
+    
+    K = K.cpu()
+    R  = R.cpu()
+    #print("the typ of d is ")
+    #print(type(d))
+    print(x.shape)
+    #R2 = torch.randn(batch_size,4,3)
+    R2 = R[:,:,0:2]
+    t = t.cpu()
+    t = np.array(t)
+    for k in range(x.shape[0]):
+     for i in range(x.shape[1]):
+        for j in range(x.shape[2]):
+            #print(j)
+            curr = np.array([i,j,d])
+            R1 = R2
+            #curr_world_coordinates = np.matmul(np.array(R1),np.matmul((np.linalg.inv(np.array(K))),curr)-t)
+            curr_world_coordinates  = curr
+            y[k,i,j] = torch.tensor(curr)
+            #y.ap   pend(curr_world_coordinates)
+     #y_final1 = np.array(y)
+     #y1.append(y_final1)
+     #print(type(y1))
+    #y_final = np.array(y1)
+    #print(type(y_final))
+    #y_final = np.float32(y_final)
+    #print(type(y_final[0]))
+    #y_final = torch.tensor(y_final,dtype = torch.float32)
+    #y_final = y_final.to(device)
+    y = y.to(device)
+    return y
+
+
+    
 
 
 
