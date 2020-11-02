@@ -90,9 +90,9 @@ def get_world_coordinates(R,K,t,x,d):
     R  = R.cpu()
     #print("the typ of d is ")
     #print(type(d))
-    print(x.shape)
+    #print(x.shape)
     #R2 = torch.randn(batch_size,4,3)
-    R2 = R[:,:,0:2]
+    R2 = R[:,0:3,0:3]
     t = t.cpu()
     t = np.array(t)
     for k in range(x.shape[0]):
@@ -101,9 +101,15 @@ def get_world_coordinates(R,K,t,x,d):
             #print(j)
             curr = np.array([i,j,d])
             R1 = R2
-            #curr_world_coordinates = np.matmul(np.array(R1),np.matmul((np.linalg.inv(np.array(K))),curr)-t)
-            curr_world_coordinates  = curr
-            y[k,i,j] = torch.tensor(curr)
+            #print(R1.shape)
+            #print(K.shape)
+            #print(curr.shape)
+            #print(t.shape)
+            curr_world_coordinates = np.matmul(np.array(R1[k]),np.matmul((np.linalg.inv(np.array(K[k]))),curr)-t[k,0:3])
+            #print("the shape of curr_world_coordinates is:{}".format(curr_world_coordinates.shape))
+            #curr_world_coordinates  = curr
+            y[k,i,j] = torch.tensor(curr_world_coordinates)
+            
             #y.ap   pend(curr_world_coordinates)
      #y_final1 = np.array(y)
      #y1.append(y_final1)
@@ -115,6 +121,8 @@ def get_world_coordinates(R,K,t,x,d):
     #y_final = torch.tensor(y_final,dtype = torch.float32)
     #y_final = y_final.to(device)
     y = y.to(device)
+    #print("The shape after world_coordninate fucntion is :{}".format(y.shape))
+    
     return y
 
 
