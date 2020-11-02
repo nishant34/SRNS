@@ -35,5 +35,5 @@ python -m tensorboard.main --logdir=[PATH_TO_LOGDIR]
 ```
 test.py file will be uploaded soon for generating results using saved model weights and evaluating them.
 
-Visualisations for novel view synthesis will also be uloaded soon along with few shot reconstruction.
+Visualisations for novel view synthesis will also be uploaded soon along with few shot reconstruction.
 
