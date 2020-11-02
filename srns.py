@@ -2,16 +2,27 @@ import torch.nn as nn
 import utils
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 from comon import *
 import utils
 from hypernetwork import *
 from geormetry import *
+from PIL import Image
+import scipy.misc
+
+
+
+
+
 class SRNS(nn.Module):
     def __init__(self,input_size,output_size,hidden_size,pixel_output):
           super(SRNS,self).__init__()
           self.layer1 = nn.Linear(input_size,256)
+          self.norm1 = nn.BatchNorm1d(256)
           self.layer2  = nn.Linear(256,256)
+          self.norm2 = nn.BatchNorm1d(256)
           self.layer3  = nn.Linear(256,output_size)
+          self.norm3 = nn.BatchNorm1d(output_size)
           self.activation = nn.ReLU()
           #self.norm = nn.BatchNorm1d()
           self.pixel_layer1 = nn.Linear(32,256)
@@ -27,44 +38,44 @@ class SRNS(nn.Module):
           self.c0 = torch.randn(1,batch_size,32)
           self.h0 = self.h0.to(device)
           self.c0 = self.c0.to(device)
-           
-           
+          self.delta_to_d_layer = nn.Linear(32,1)
+          self.logs = list()
            
 
 
     def scene_representer(self,x,latent_embed):
           x = self.layer1(x)
           x = self.activation(x)
-          #x = self.norm(x)
+          x = self.norm1(x)
           x = self.layer2(x)
           x = self.activation(x)
-          #x = self.norm(x)
+          x = self.norm2(x)
           x = self.layer3(x)
           return x
     def pixel_generator(self,x):
          #print(x.shape)
-         w_shape = int(x.shape[2]/32)
+         w_shape = int(x.shape[1]/32)
          #print("harshad_mehta:{}".format(w_shape))
          w = torch.zeros(batch_size,w_shape,3)
          count = 0
          for i in range(0,x.shape[-1],32):
-          c= x[0,:,i:i+32]
+          c= x[:,i:i+32]
           #print(c.shape)
           #print("11111")
           a = self.pixel_layer1(c)
           a = self.activation(a)
-         #x = self.norm(x)
+          a = self.norm1(a)
           a = self.pixel_layer2(a)
           a = self.activation(a)
-         #x = self.norm(x)
+          a = self.norm1(a)
           
           a = self.pixel_layer3(a)
           a = self.activation(a)
-         #x = self.norm(x)
+          a = self.norm1(a)
          
           a = self.pixel_layer4(a)
           a = self.activation(a)
-         #x = self.norm(x)
+          a = self.norm1(a)
           
           a = self.pixel_layer5(a)
           w[:,count,:] = a
@@ -72,14 +83,20 @@ class SRNS(nn.Module):
 
 
     def forward(self,id1,x,R,k,t):
+      #print("the shape of x is :{}".format(x.shape))
       curr_latent_code = self.latent_codes(id1)
       self.latent = curr_latent_code
       self.latent = self.latent.to(device)
       #print("and the shape is:{}".format(x.shape))
-      #x = x.reshape(x.size(0),-1)
+      x1 = x.reshape(x.size(0),-1)
+      d_shape = x1.shape[1]/3
+      d_shape = int(d_shape)
+      self.d = torch.zeros(4,d_shape)
+      self.d = self.d.to(device)
+      
       for i in range (2):
-         self.d = initial_distance
-         y = utils.get_world_coordinates(R,k,t,x,self.d)
+         self.d1 = initial_distance
+         y = utils.get_world_coordinates(R,k,t,x,self.d1)
          y = torch.reshape(y,[4,-1])
          w_shape = y.shape[-1]
          w_shape = w_shape/3
@@ -88,20 +105,30 @@ class SRNS(nn.Module):
          w =torch.zeros(4,w_shape)
          #print("and the shape for w is {}".format(w.shape))
          w = w.to(device)
-         for i in range(0,x.shape[-1],3):
+         count = 0
+         network = self.hyper_scene_representer(curr_latent_code)
+         for i in range(0,x1.shape[-1],3):
+             if  count==1000:
+                     break
              a = y[:,i:i+3]
              a = a.to(device)
-             network = self.hyper_scene_representer(curr_latent_code)
+             #network = self.hyper_scene_representer(curr_latent_code)
              #print(a.shape)
+             #print(w[:,i:i+feature_vector_size].shape)
+             #print("got it")
              w[:,i:i+feature_vector_size] = network(a)
              #b = network(a)
              #print(b.shape)
              #print("222222")
-             w = w[None,:,:]
-             self.delta,(self.h1,self.c1) = self.lstm_marcher(w[:,:,i:i+feature_vector_size],(self.h0,self.c0))
+             w1 = w[None,:,:]
+             self.delta,(self.h1,self.c1) = self.lstm_marcher(w1[:,:,i:i+feature_vector_size],(self.h0,self.c0))
              self.h0 = self.h1
              self.c0 = self.c1
-             self.d = self.d+self.delta
+             self.delta_1 = self.delta_to_d_layer(self.delta)
+             #print(self.d.shape)
+             #print(self.delta_1.shape)
+             self.d[:,count] = self.d[:,count]+self.delta_1[0,:,0]
+             count+=1
       
       pixel_rendered = self.pixel_generator(w)
       with torch.no_grad():
@@ -114,13 +141,31 @@ class SRNS(nn.Module):
             x_cam = uv[:,:,0].view(batch_size,-1)
             y_cam = uv[:,:,1].view(batch_size,-1)
             z_cam  = self.d.view(batch_size,-1)
+            t = x_cam.shape[1]
+            z_cam1 = z_cam[:,0:t]
 
 
             #normals = compute_normal_map(x_img=x_cam, y_img=y_cam, z=z_cam, intrinsics=intrinsics)
-            #depth_image = depth_map_to_cam_coordinates(x_cam,y_cam,z_cam,k)
-            #normals = get_normal_map_from_depth_map(deth_image)
-            #self.logs.append(("image", "normals",
-                           #torchvision.utils.make_grid(normals, scale_each=True, normalize=True), 100))
+            depth_image = depth_map_to_cam_coordinates(x_cam,y_cam,z_cam1,k)
+            #print("depth_cam_passed")
+            normals = get_normal_map_from_depth_map(depth_image)
+            #print("normals passed")
+            normals = np.array(normals)
+            #print("the uniqueness in the normals")
+            #print(np.unique(normals))
+            normals1 = normals.reshape(4,32,32,3)
+            normals2 = normals1[0]
+            #print(normals2)
+            #print(type(normals2))
+            normals3 = Image.fromarray(normals2.astype(np.uint8))
+
+            normals3.save('output_file.jpg')
+            #print("the shape of normals is :{}".format(normals.shape))
+            #scipy.misc.imsave('output_file.jpg',normals)
+            #print("image_saved")
+            #r = t
+            self.logs.append(("image", "normals",
+                           torchvision.utils.make_grid(torch.tensor(normals), scale_each=True, normalize=True), 100))
       self.input1 = x 
       self.input1 = self.input1.to(device)
       self.output1 = torch.reshape(pixel_rendered,x.shape)  
