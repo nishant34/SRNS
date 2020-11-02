@@ -55,6 +55,8 @@ if __name__== '__main__':
     logger.info("end epoch:{}".format(end_epoch))
     logger.info("Batch_size:{}".format(train_batch_size))
     print("training started")
+    if torch.cuda.is_available():
+        print("using cuda..........")
     train_dataloader =  DataLoader(train_dataset,batch_size=batch_size,shuffle=False)
     writer = SummaryWriter(log_dir = log_path)
     val_writer = SummaryWriter(log_dir = log_path)
@@ -64,7 +66,7 @@ if __name__== '__main__':
          for objects in inputs:
             iter+=1
             if torch.cuda.is_available():    
-                print('using cuda........')
+                #print('using cuda........')
                 #images,extrinsics,intrinsics = objects
                 images = objects[0]
                 extrinsics = objects[2]
@@ -91,8 +93,8 @@ if __name__== '__main__':
             total_loss.backward(retain_graph=True)
                  
             optimizer.step()
-
-            print('iter:{}'.format(iter),'epoch:{}'.format(epoch),'lr:{:.6f}'.format(lr),'recons_loss:{:.6f}'.format(image_loss),'embed_loss:{}'.format(latent_loss),'depth_reg_loss:{}'.format(depth_reg_loss))
+            print('____________________________________________________________________________________________________________________________________')
+            print('iter:{}'.format(iter),"||",'epoch:{}'.format(epoch),"||",'lr:{:.6f}'.format(lr),"||",'recons_loss:{:.6f}'.format(image_loss),"||",'embed_loss:{}'.format(latent_loss),"||",'depth_reg_loss:{}'.format(depth_reg_loss))
             #print('iter:{}'.format(iter),'epoch:{}'.format(epoch),'lr:{:.6f}'.format(lr),'recons_loss:{:.6f}'.format(image_loss))
             writer.add_scalar('recon_loss',image_loss,epoch)
             writer.add_scalar('embed_loss',latent_loss,epoch)
