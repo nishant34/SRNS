@@ -9,11 +9,6 @@ from hypernetwork import *
 from geormetry import *
 from PIL import Image
 import scipy.misc
-
-
-
-
-
 class SRNS(nn.Module):
     def __init__(self,input_size,output_size,hidden_size,pixel_output):
           super(SRNS,self).__init__()
@@ -30,12 +25,13 @@ class SRNS(nn.Module):
           self.pixel_layer3 = nn.Linear(256,256)
           self.pixel_layer4 = nn.Linear(256,256)
           self.pixel_layer5 = nn.Linear(256,pixel_output)
-          self.lstm_marcher =  nn.LSTM(32,hidden_size,1)  
+          #self.lstm_marcher =  nn.LSTM(32,hidden_size,1)  
+          self.lstm_marcher =  nn.LSTM(32,hidden_size)  
           self.d = initial_distance
           self.latent_codes = nn.Embedding(num_instances,latent_dim).cuda()
           self.hyper_scene_representer = fullnetwork(latent_size,output_size,hidden_layer_dim,num_layers) 
-          self.h0 = torch.randn(1,batch_size,32)
-          self.c0 = torch.randn(1,batch_size,32)
+          self.h0 = torch.randn(1,16384,32)
+          self.c0 = torch.randn(1,16384,32)
           self.h0 = self.h0.to(device)
           self.c0 = self.c0.to(device)
           self.delta_to_d_layer = nn.Linear(32,1)
@@ -54,32 +50,33 @@ class SRNS(nn.Module):
           return x
     def pixel_generator(self,x):
          #print(x.shape)
-         w_shape = int(x.shape[1]/32)
+         #1w_shape = int(x.shape[1]/32)
          #print("harshad_mehta:{}".format(w_shape))
-         w = torch.zeros(batch_size,w_shape,3)
-         count = 0
-         for i in range(0,x.shape[-1],32):
-          c= x[:,i:i+32]
+         #1w = torch.zeros(batch_size,w_shape,3)
+         #1count = 0
+         #1for i in range(0,x.shape[-1],32):
+         #1 c= x[:,i:i+32]
           #print(c.shape)
           #print("11111")
-          a = self.pixel_layer1(c)
+          a = self.pixel_layer1(x)
           a = self.activation(a)
-          a = self.norm1(a)
+          #a = self.norm1(a)
           a = self.pixel_layer2(a)
           a = self.activation(a)
-          a = self.norm1(a)
+          #a = self.norm1(a)
           
           a = self.pixel_layer3(a)
           a = self.activation(a)
-          a = self.norm1(a)
+          #a = self.norm1(a)
          
           a = self.pixel_layer4(a)
           a = self.activation(a)
-          a = self.norm1(a)
+          #a = self.norm1(a)
           
           a = self.pixel_layer5(a)
-          w[:,count,:] = a
-         return w
+          #1w[:,count,:] = a
+         #1return w
+          return a
 
 
     def forward(self,id1,x,R,k,t):
@@ -91,7 +88,8 @@ class SRNS(nn.Module):
       x1 = x.reshape(x.size(0),-1)
       d_shape = x1.shape[1]/3
       d_shape = int(d_shape)
-      self.d = torch.zeros(4,d_shape)
+      #1self.d = torch.zeros(4,d_shape)
+      self.d = torch.zeros(16384,32)
       self.d = self.d.to(device)
       
       for i in range (2):
@@ -107,29 +105,42 @@ class SRNS(nn.Module):
          w = w.to(device)
          count = 0
          network = self.hyper_scene_representer(curr_latent_code)
-         for i in range(0,x1.shape[-1],3):
-             if  count==1000:
-                     break
-             a = y[:,i:i+3]
-             a = a.to(device)
+         #new approach
+         y = y.to(device)
+         y = y.view(y.shape[0],-1,3)
+         w_correct = network(y)
+         w_correct = w_correct.view(-1,feature_vector_size)
+         w_correct = w_correct[None,:,:]
+         self.delta,(self.h1,self.c1) = self.lstm_marcher(w_correct,(self.h0,self.c0)) 
+         self.h0 = self.h1
+         self.c0 = self.c1
+         self.delta_1 = self.delta_to_d_layer(self.delta)
+         self.d = self.d + self.delta_1
+
+             
+         #1for i in range(0,x1.shape[-1],3):
+         #1    if  count==1000:
+         #1            break
+         #1    a = y[:,i:i+3]
+         #1    a = a.to(device)
              #network = self.hyper_scene_representer(curr_latent_code)
              #print(a.shape)
              #print(w[:,i:i+feature_vector_size].shape)
              #print("got it")
-             w[:,i:i+feature_vector_size] = network(a)
+          #1   w[:,i:i+feature_vector_size] = network(a)
              #b = network(a)
              #print(b.shape)
              #print("222222")
-             w1 = w[None,:,:]
-             self.delta,(self.h1,self.c1) = self.lstm_marcher(w1[:,:,i:i+feature_vector_size],(self.h0,self.c0))
-             self.h0 = self.h1
-             self.c0 = self.c1
-             self.delta_1 = self.delta_to_d_layer(self.delta)
+          #1   w1 = w[None,:,:]
+          #1   self.delta,(self.h1,self.c1) = self.lstm_marcher(w1[:,:,i:i+feature_vector_size],(self.h0,self.c0))
+          #1   self.h0 = self.h1
+          #1   self.c0 = self.c1
+          #1   self.delta_1 = self.delta_to_d_layer(self.delta)
              #print(self.d.shape)
              #print(self.delta_1.shape)
-             self.d[:,count] = self.d[:,count]+self.delta_1[0,:,0]
-             count+=1
-      
+          #1   self.d[:,count] = self.d[:,count]+self.delta_1[0,:,0]
+          #1   count+=1
+      w = w_correct.view(4,-1,32)
       pixel_rendered = self.pixel_generator(w)
       with torch.no_grad():
             #batch_size = uv.shape[0]
