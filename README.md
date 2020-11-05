@@ -44,9 +44,9 @@ Visualisations for novel view synthesis will also be uploaded soon along with fe
 * dataloader_srn.py : For loading the data as objects of a articula class of shapes.
 * hypernetwork.py : Code for using hypernetworks to predict model weights taking latent feature vetcor of shape as input.
 * geormetry.py : For 3D projections and related functions.
-* common.py  : Hyperparameter values , path values and other parameter values.
+* comon.py  : Hyperparameter values , path values and other parameter values.
 * train.py : Contains the ocde for trianing the model.
-* utilities.py : Contains utility functions helpful during training and forward pass of the model.
+* utils.py : Contains utility functions helpful during training and forward pass of the model.
 * srns.py : Contains the complete code of the model.
 
 
